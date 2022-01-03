@@ -1,41 +1,73 @@
-# Data Pipeline with Airflow
+# Manon - Airflow ETL
 
-## Overview
+============
 
-A music streaming company, Sparkify, has decided that it is time to introduce more automation and monitoring to their data warehouse ETL pipelines and come to the conclusion that the best tool to achieve this is Apache Airflow.
+ETL and analysis are important for data science workflow.
+Airflow is different from Apache Beam. It is more oriented
+to executing separate steps rather than being fully fledged
+data streaming analytics solution.
+It has a variety of built-in operators.
 
-## Project Description
+---
 
-This project creates a high grade data pipeline that is dynamic and built from reusable tasks, can be monitored, and allow easy backfills. As data quality plays a big part when analyses are executed on top the data warehouse, thus the pipeline runs tests against Sparkify's datasets after the ETL steps have been executed to catch any discrepancies in the datasets.
+## Features
+- MWAA support
+- Redshift support
 
-The source data resides in S3 and needs to be processed in Sparkify's data warehouse in Amazon Redshift. The source datasets consist of JSON logs that tell about user activity in the application and JSON metadata about the songs the users listen to.
+---
 
-## Datasets
-Here are the s3 links for datasets used in this project:
+## Setup
+Clone this repo:
+```
+git@github.com:andreiliphd/manon-airflow-etl.git
+```
 
-`Log data: s3://udacity-dend/log_data`
-`Song data: s3://udacity-dend/song_data`
 
-## Structure
+---
 
-Project has two directories named `dags` and `plugins`. A create tables script and readme file are at root level:
-- `create_tables.sql`: SQL create table statements provided with template.
+## File structure
 
-`dags` directory contains:
-- `sparkify_etl_dag.py`: Defines main DAG, tasks and link the tasks in required order.
+`setup.ipynb` - Jupyter Notebook for creating tables in Redshift
 
-`plugins/operators` directory contains:
-- `stage_redshift.py`: Defines `StageToRedshiftOperator` to copy JSON data from S3 to staging tables in the Redshift via `copy` command.
-- `load_dimension.py`: Defines `LoadDimensionOperator` to load a dimension table from staging table(s).
-- `load_fact.py`: Defines `LoadFactOperator` to load fact table from staging table(s).
-- `data_quality.py`: Defines `DataQualityOperator` to run data quality checks on all tables passed as parameter.
-- `sql_queries.py`: Contains SQL queries for the ETL pipeline (provided in template).
+`udacity_plugin.py` - plugin definition for Apache Airflow
 
-## Config
+`operators/` - folder with operators for Apache Airflow
 
-This code uses `python 3` and assumes that Apache Airflow is installed and configured.
+`operators/stage_redshift.py` - operator for staging data from S3 before loading to Redshift
 
-- Create a Redshift cluster and run `create_tables.sql` there for once only.
-- Make sure to add following two Airflow connections:
-    - AWS credentials, named `aws_credentials`
-    - Connection to Redshift, named `redshift`
+`oprators/load_fact.py` - operator for loading fact table to Redshift
+
+`operators/load_dimenstion.py` - operator for loading dimension tables to Redshift
+
+`operators/data_quality` - data quality check operator
+
+`dags/` - folder with dags for Apache Airflow
+
+`requirements.txt` - requirements for running `setup.ipynb`.
+
+---
+
+## Notebook
+In a file `setup.ipynb` you can find Jupyter Notebook for setting up tables in Redshift.
+
+---
+
+## Usage
+There are two main AWS products involved to successfully execute project:
+- MWAA
+- Redshift
+
+Steps:
+1. Setup Redshift. Don't forget to make publicly available with EIP.
+2. Setup MWAA.
+3. Upload to S3 `dags/sparkify_dag.py`.
+4. ZIP and upload to S3 `operators` folder along with `__init__.py` and `udacity_plugin.py`.
+5. Point MWAA to these buckets.
+6. Execute cells in `setup.ipynb`.
+7. Open MWAA UI and run DAG.
+
+
+---
+
+## License
+This project is licensed under the terms of the **MIT** license.
