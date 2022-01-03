@@ -29,17 +29,17 @@ git@github.com:andreiliphd/manon-airflow-etl.git
 
 `setup.ipynb` - Jupyter Notebook for creating tables in Redshift
 
-`udacity_plugin.py` - plugin definition for Apache Airflow
+`plugins/udacity_plugin.py` - plugin definition for Apache Airflow
 
-`operators/` - folder with operators for Apache Airflow
+`plugins/operators/` - folder with operators for Apache Airflow
 
-`operators/stage_redshift.py` - operator for staging data from S3 before loading to Redshift
+`plugins/operators/stage_redshift.py` - operator for staging data from S3 before loading to Redshift
 
-`oprators/load_fact.py` - operator for loading fact table to Redshift
+`plugins/oprators/load_fact.py` - operator for loading fact table to Redshift
 
-`operators/load_dimenstion.py` - operator for loading dimension tables to Redshift
+`plugins/operators/load_dimenstion.py` - operator for loading dimension tables to Redshift
 
-`operators/data_quality` - data quality check operator
+`plugins/operators/data_quality` - data quality check operator
 
 `dags/` - folder with dags for Apache Airflow
 
@@ -53,6 +53,20 @@ In a file `setup.ipynb` you can find Jupyter Notebook for setting up tables in R
 ---
 
 ## Usage
+### Execution using Airflow(standalone)
+1. Setup Redshift.
+2. Install Airflow.
+```shell
+pip install "apache-airflow[celery]"
+pip install "apache-airflow[postgres]"
+pip install "apache-airflow[aws]"
+```
+3. Run Airflow.
+```shell
+airflow standalone
+```
+
+### Execution using MWAA and Redshift
 There are two main AWS products involved to successfully execute project:
 - MWAA
 - Redshift
@@ -63,8 +77,25 @@ Steps:
 3. Upload to S3 `dags/sparkify_dag.py`.
 4. ZIP and upload to S3 `operators` folder along with `__init__.py` and `udacity_plugin.py`.
 5. Point MWAA to these buckets.
-6. Execute cells in `setup.ipynb`.
-7. Open MWAA UI and run DAG.
+6. Create configuration file `dwh.cfg`.
+```python
+[CLUSTER]
+HOST={database_host}
+DB_NAME={database_name}
+DB_USER={database_username}
+DB_PASSWORD={database_password}
+DB_PORT={database_port}
+
+[IAM_ROLE]
+ARN= {arn_aws_iam}
+
+[S3]
+LOG_DATA=s3://udacity-dend/log_data
+LOG_JSONPATH=s3://udacity-dend/log_json_path.json
+SONG_DATA=s3://udacity-dend/song_data
+```
+7. Execute cells in `setup.ipynb`.
+8. Open MWAA UI and run DAG.
 
 
 ---
