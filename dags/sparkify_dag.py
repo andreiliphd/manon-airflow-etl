@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
-import os
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.sql import SQLValueCheckOperator
 from operators import (StageToRedshiftOperator, LoadFactOperator,
-                       LoadDimensionOperator, DataQualityOperator)
+                               LoadDimensionOperator, DataQualityOperator)
 
 default_args = {
     'owner': 'udacity',
