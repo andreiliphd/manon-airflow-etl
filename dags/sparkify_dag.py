@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import os
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
+from airflow.operators.sql import SQLValueCheckOperator
 from operators import (StageToRedshiftOperator, LoadFactOperator,
                        LoadDimensionOperator, DataQualityOperator)
 
@@ -70,7 +71,7 @@ dag = DAG('sparkify_etl_airflow',
 start_operator = DummyOperator(task_id='Begin_execution', dag=dag)
 
 stage_events_to_redshift = StageToRedshiftOperator(
-    task_id='Stage_events',
+    task_id='stage_events',
     dag=dag,
     table="staging_events",
     redshift_conn_id="redshift",
@@ -82,7 +83,7 @@ stage_events_to_redshift = StageToRedshiftOperator(
 )
 
 stage_songs_to_redshift = StageToRedshiftOperator(
-    task_id='Stage_songs',
+    task_id='stage_songs',
     dag=dag,
     table="staging_songs",
     redshift_conn_id="redshift",
@@ -94,7 +95,7 @@ stage_songs_to_redshift = StageToRedshiftOperator(
 )
 
 load_songplays_table = LoadFactOperator(
-    task_id='Load_songplays_fact_table',
+    task_id='load_songplays_fact_table',
     dag=dag,
     table='songplays',
     redshift_conn_id="redshift",
@@ -102,7 +103,7 @@ load_songplays_table = LoadFactOperator(
 )
 
 load_user_dimension_table = LoadDimensionOperator(
-    task_id='Load_user_dim_table',
+    task_id='load_user_dim_table',
     dag=dag,
     table='users',
     redshift_conn_id="redshift",
@@ -111,7 +112,7 @@ load_user_dimension_table = LoadDimensionOperator(
 )
 
 load_song_dimension_table = LoadDimensionOperator(
-    task_id='Load_song_dim_table',
+    task_id='load_song_dim_table',
     dag=dag,
     table='songs',
     redshift_conn_id="redshift",
@@ -120,7 +121,7 @@ load_song_dimension_table = LoadDimensionOperator(
 )
 
 load_artist_dimension_table = LoadDimensionOperator(
-    task_id='Load_artist_dim_table',
+    task_id='load_artist_dim_table',
     dag=dag,
     table='artists',
     redshift_conn_id="redshift",
@@ -129,7 +130,7 @@ load_artist_dimension_table = LoadDimensionOperator(
 )
 
 load_time_dimension_table = LoadDimensionOperator(
-    task_id='Load_time_dim_table',
+    task_id='load_time_dim_table',
     dag=dag,
     table='time',
     redshift_conn_id="redshift",
@@ -139,20 +140,78 @@ load_time_dimension_table = LoadDimensionOperator(
 )
 
 run_quality_checks = DataQualityOperator(
-    task_id='Run_data_quality_checks',
+    task_id='data_quality_checks',
     dag=dag,
     dq_checks=[
-        { 'check_sql': 'SELECT COUNT(*) FROM public.songplays WHERE userid IS NULL', 'expected_result': 0 }, 
-        { 'check_sql': 'SELECT COUNT(DISTINCT "level") FROM public.songplays', 'expected_result': 2 },
-        { 'check_sql': 'SELECT COUNT(*) FROM public.artists WHERE name IS NULL', 'expected_result': 0 },
-        { 'check_sql': 'SELECT COUNT(*) FROM public.songs WHERE title IS NULL', 'expected_result': 0 },
-        { 'check_sql': 'SELECT COUNT(*) FROM public.users WHERE first_name IS NULL', 'expected_result': 0 },
-        { 'check_sql': 'SELECT COUNT(*) FROM public."time" WHERE weekday IS NULL', 'expected_result': 0 },
-        { 'check_sql': 'SELECT COUNT(*) FROM public.songplays sp LEFT OUTER JOIN public.users u ON u.userid = sp.userid WHERE u.userid IS NULL', \
-         'expected_result': 0 }
+        { 'check_sql': 'SELECT COUNT(*) FROM public.songplays WHERE userid IS NULL', 'expected_result': 0},
+        { 'check_sql': 'SELECT COUNT(DISTINCT "level") FROM public.songplays', 'expected_result': 2},
+        { 'check_sql': 'SELECT COUNT(*) FROM public.artists WHERE name IS NULL', 'expected_result': 0},
+        { 'check_sql': 'SELECT COUNT(*) FROM public.songs WHERE title IS NULL', 'expected_result': 0},
+        { 'check_sql': 'SELECT COUNT(*) FROM public.users WHERE first_name IS NULL', 'expected_result': 0},
+        { 'check_sql': 'SELECT COUNT(*) FROM public."time" WHERE weekday IS NULL', 'expected_result': 0},
+        { 'check_sql': 'SELECT COUNT(*) FROM public.songplays sp LEFT OUTER JOIN public.users u '
+                       'ON u.userid = sp.userid WHERE u.userid IS NULL', 'expected_result': 0}
     ],
     redshift_conn_id="redshift"
 )
+
+run_quality_check_name_not_null = SQLValueCheckOperator(
+    task_id="name_not_null_dq",
+    dag=dag,
+    conn_id="redshift",
+    sql='SELECT COUNT(*) FROM public.artists WHERE name IS NULL',
+    pass_value=0
+)
+
+run_quality_check_user_id_not_null = SQLValueCheckOperator(
+    task_id="user_id_not_null_dq",
+    dag=dag,
+    conn_id="redshift",
+    sql='SELECT COUNT(*) FROM public.songplays WHERE userid IS NULL',
+    pass_value=0
+)
+
+run_quality_check_title_not_null = SQLValueCheckOperator(
+    task_id="title_not_null_dq",
+    dag=dag,
+    conn_id="redshift",
+    sql='SELECT COUNT(*) FROM public.songs WHERE title IS NULL',
+    pass_value=0
+)
+
+run_quality_check_first_name_not_null = SQLValueCheckOperator(
+    task_id="first_name_not_null_dq",
+    dag=dag,
+    conn_id="redshift",
+    sql='SELECT COUNT(*) FROM public.users WHERE first_name IS NULL',
+    pass_value=0
+)
+
+run_quality_check_weekday_not_null = SQLValueCheckOperator(
+    task_id="weekday_not_null_dq",
+    dag=dag,
+    conn_id="redshift",
+    sql='SELECT COUNT(*) FROM public."time" WHERE weekday IS NULL',
+    pass_value=0
+)
+
+run_quality_check_joined_user_id_not_null = SQLValueCheckOperator(
+    task_id="joined_user_id_not_null_dq",
+    dag=dag,
+    conn_id="redshift",
+    sql='SELECT COUNT(*) FROM public.songplays sp LEFT OUTER JOIN public.users u '
+        'ON u.userid = sp.userid WHERE u.userid IS NULL',
+    pass_value=0
+)
+
+run_quality_check_levels_are_correct = SQLValueCheckOperator(
+    task_id="levels_are_correct_dq",
+    dag=dag,
+    conn_id="redshift",
+    sql='SELECT COUNT(DISTINCT "level") FROM public.songplays',
+    pass_value=2
+)
+
 
 end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
 
@@ -176,4 +235,10 @@ load_song_dimension_table >> run_quality_checks
 load_artist_dimension_table >> run_quality_checks
 load_time_dimension_table >> run_quality_checks
 
-run_quality_checks >> end_operator
+run_quality_checks >> run_quality_check_user_id_not_null >> end_operator
+run_quality_checks >> run_quality_check_levels_are_correct >> end_operator
+run_quality_checks >> run_quality_check_title_not_null >> end_operator
+run_quality_checks >> run_quality_check_weekday_not_null >> end_operator
+run_quality_checks >> run_quality_check_first_name_not_null >> end_operator
+run_quality_checks >> run_quality_check_name_not_null >> end_operator
+run_quality_checks >> run_quality_check_joined_user_id_not_null >> end_operator
